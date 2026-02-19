@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>רשימת אפליקציות</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .search-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        #searchInput {
+            width: 80%;
+            max-width: 500px;
+            padding: 12px 20px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        #searchInput:focus {
+            border-color: #3498db;
+        }
+        /* עיצוב הגריד של הקוביות */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .app-card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #eee;
+        }
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+        }
+        .app-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            object-fit: cover;
+            margin-bottom: 15px;
+            background-color: #f0f0f0;
+            /* הצללה קלה לאייקון */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .app-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            direction: ltr; /* שמות האפליקציות לרוב באנגלית */
+        }
+        .app-desc {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin: 0;
+            direction: ltr;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>מאגר האפליקציות שלי</h1>
+    
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="חפש אפליקציה או שם חבילה (Package)...">
+    </div>
+
+    <div class="grid-container" id="appsContainer">
+        </div>
+
+    <script>
+        let appsData = [];
+
+        // פונקציה לניקוי שם האפליקציה בדיוק כמו בסקריפט הפייתון כדי להתאים לשם התמונה
+        function getSafeFileName(appName) {
+            return appName.replace(/[\\/*?:"<>|]/g, "");
+        }
+
+        // קריאת קובץ ה-CSV
+        Papa.parse("play_store_apps.csv", {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                appsData = results.data;
+                renderApps(appsData);
+            },
+            error: function(err) {
+                console.error("שגיאה בטעינת הקובץ:", err);
+                document.getElementById('appsContainer').innerHTML = '<p style="text-align:center; width:100%; color:red;">שגיאה בטעינת קובץ ה-CSV. ודא שאתה מריץ את הקובץ דרך שרת מקומי.</p>';
+            }
+        });
+
+        // פונקציה ליצירת הקוביות ב-HTML
+        function renderApps(apps) {
+            const container = document.getElementById('appsContainer');
+            container.innerHTML = '';
+
+            apps.forEach(app => {
+                // דילוג על שורות ריקות או אפליקציות שלא נמצאו כראוי
+                if (!app["App Name"] || app["App Name"] === "") return;
+
+                const card = document.createElement('div');
+                card.className = 'app-card';
+
+                const safeName = getSafeFileName(app["App Name"]);
+                // אם בעמודת Icon Downloaded כתוב Yes, נטען מהתיקייה, אחרת נשים תמונת ברירת מחדל
+                const iconSrc = app["Icon Downloaded"] === "Yes" ? `icons/${safeName}.png` : 'https://via.placeholder.com/80?text=No+Icon';
+
+                card.innerHTML = `
+                    <img src="${iconSrc}" alt="${app["App Name"]} Icon" class="app-icon" onerror="this.src='https://via.placeholder.com/80?text=Error'">
+                    <h3 class="app-name">${app["App Name"]}</h3>
+                    <p class="app-desc">${app["Package Name"]}</p>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // מערכת חיפוש בזמן אמת
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredApps = appsData.filter(app => {
+                const nameMatch = app["App Name"] && app["App Name"].toLowerCase().includes(searchTerm);
+                const pkgMatch = app["Package Name"] && app["Package Name"].toLowerCase().includes(searchTerm);
+                return nameMatch || pkgMatch;
+            });
+            renderApps(filteredApps);
+        });
+    </script>
+
+</body>
+</html>
